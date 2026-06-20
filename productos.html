@@ -1,0 +1,183 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Nivel X - Productos</title>
+  <link rel="icon" href="img/favicon.ico">
+  <link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+
+  <header>
+    <div class="logo-area">
+      <h1>🎮 Nivel X</h1>
+    </div>
+    <nav>
+      <a href="index.html">Inicio</a>
+      <a href="productos.html" class="active">Productos</a>
+      <a href="carrito.html" class="carrito-badge">
+        Carrito
+        <span class="badge" id="badge-carrito">0</span>
+      </a>
+      <a href="http://localhost:3000/login" target="_blank">Admin</a>
+    </nav>
+    <button class="btn-tema" id="btn-tema">🌙 Oscuro</button>
+    <span class="alumnos">kari  · mia</span>
+  </header>
+
+  <div class="bienvenida-bar">
+    Hola, <strong id="nombre-usuario"></strong> — elegí tus productos
+  </div>
+
+  <main>
+    <div class="categorias">
+      <button class="cat-btn active" onclick="cambiarCategoria('juegos', this)">🕹️ Juegos</button>
+      <button class="cat-btn" onclick="cambiarCategoria('accesorios', this)">🎧 Accesorios</button>
+    </div>
+
+    <div class="grid" id="grilla-productos"></div>
+    <div class="paginacion" id="paginacion"></div>
+  </main>
+
+  <script>
+    const productos = {
+      juegos: [
+        { id: 1, nombre: "The Legend of Zelda: Tears of the Kingdom", plataforma: "Nintendo Switch", genero: "Aventura", precio: 14999, imagen: "img/zelda.png", activo: true },
+        { id: 2, nombre: "God of War Ragnarök", plataforma: "PlayStation 5", genero: "Acción", precio: 16999, imagen: "img/god_of_word.png", activo: true },
+        { id: 3, nombre: "Elden Ring", plataforma: "PC", genero: "RPG", precio: 12999, imagen: "img/elden_ring.png", activo: true },
+        { id: 4, nombre: "Spider-Man 2", plataforma: "PlayStation 5", genero: "Acción", precio: 17999, imagen: "img/spiderman2.png", activo: true },
+        { id: 5, nombre: "Hades II", plataforma: "PC", genero: "Roguelike", precio: 8999, imagen: "img/hades2.png", activo: true },
+        { id: 6, nombre: "Hollow Knight: Silksong", plataforma: "PC / Switch", genero: "Metroidvania", precio: 6999, imagen: "img/silksong.png", activo: false }
+      ],
+      accesorios: [
+        { id: 7, nombre: "Control DualSense", tipo: "Control", compatible: "PlayStation 5", precio: 34999, imagen: "img/dualsense.png", activo: true },
+        { id: 8, nombre: "Headset HyperX Cloud III", tipo: "Auriculares", compatible: "PC / PS5 / Xbox", precio: 52999, imagen: "img/hyperx.png", activo: true },
+        { id: 9, nombre: "Teclado Razer BlackWidow V4", tipo: "Teclado", compatible: "PC", precio: 67999, imagen: "img/teclado.png", activo: true },
+        { id: 10, nombre: "Mouse Logitech G Pro X Superlight", tipo: "Mouse", compatible: "PC", precio: 48999, imagen: "img/mouse.png", activo: true },
+        { id: 11, nombre: "Soporte de pared para controles", tipo: "Soporte", compatible: "Universal", precio: 4999, imagen: "img/controles.png", activo: true },
+        { id: 12, nombre: "Silla gamer DXRacer Formula", tipo: "Silla", compatible: "Universal", precio: 189999, imagen: "img/silla.png", activo: true }
+      ]
+    }
+
+    const POR_PAGINA = 4
+    let categoriaActual = 'juegos'
+    let paginaActual = 1
+
+    function init() {
+      const nombre = localStorage.getItem('usuario')
+      if (!nombre) { window.location.href = 'index.html'; return }
+      document.getElementById('nombre-usuario').textContent = nombre
+
+      const temaGuardado = localStorage.getItem('tema')
+      if (temaGuardado === 'dark') {
+        document.body.classList.add('dark')
+        document.getElementById('btn-tema').textContent = '☀️ Claro'
+      }
+
+      actualizarBadge()
+      renderProductos()
+    }
+
+    function cambiarCategoria(cat, btn) {
+      categoriaActual = cat
+      paginaActual = 1
+      document.querySelectorAll('.cat-btn').forEach(b => b.classList.remove('active'))
+      btn.classList.add('active')
+      renderProductos()
+    }
+
+    function renderProductos() {
+      const activos = productos[categoriaActual].filter(p => p.activo)
+      const total = activos.length
+      const totalPaginas = Math.ceil(total / POR_PAGINA)
+      const inicio = (paginaActual - 1) * POR_PAGINA
+      const pagina = activos.slice(inicio, inicio + POR_PAGINA)
+
+      const grilla = document.getElementById('grilla-productos')
+
+      if (pagina.length === 0) {
+        grilla.innerHTML = '<div class="sin-productos">No hay productos disponibles</div>'
+        document.getElementById('paginacion').innerHTML = ''
+        return
+      }
+
+      grilla.innerHTML = pagina.map(p => {
+        const carrito = obtenerCarrito()
+        const estaEnCarrito = carrito.some(c => c.id === p.id)
+        const meta = p.plataforma
+          ? `${p.plataforma} · ${p.genero}`
+          : `${p.tipo} · Compatible: ${p.compatible}`
+        return `
+          <div class="card">
+            <img src="${p.imagen}" alt="${p.nombre}" onerror="this.src='https://placehold.co/400x300/333/white?text=Sin+imagen'">
+            <div class="card-body">
+              <div class="card-nombre">${p.nombre}</div>
+              <div class="card-meta">${meta}</div>
+              <div class="card-precio">$${p.precio.toLocaleString('es-AR')}</div>
+            </div>
+            <button class="btn-agregar ${estaEnCarrito ? 'agregado' : ''}" onclick="agregarAlCarrito(${p.id})">
+              ${estaEnCarrito ? '✓ Agregado' : '+ Agregar al carrito'}
+            </button>
+          </div>
+        `
+      }).join('')
+
+      renderPaginacion(totalPaginas)
+    }
+
+    function renderPaginacion(totalPaginas) {
+      const div = document.getElementById('paginacion')
+      if (totalPaginas <= 1) { div.innerHTML = ''; return }
+      let html = `<button onclick="irPagina(${paginaActual - 1})" ${paginaActual === 1 ? 'disabled' : ''}>← Anterior</button>`
+      for (let i = 1; i <= totalPaginas; i++) {
+        html += `<button class="${i === paginaActual ? 'active' : ''}" onclick="irPagina(${i})">${i}</button>`
+      }
+      html += `<button onclick="irPagina(${paginaActual + 1})" ${paginaActual === totalPaginas ? 'disabled' : ''}>Siguiente →</button>`
+      div.innerHTML = html
+    }
+
+    function irPagina(n) {
+      paginaActual = n
+      renderProductos()
+      window.scrollTo({ top: 0, behavior: 'smooth' })
+    }
+
+    function obtenerCarrito() {
+      return JSON.parse(localStorage.getItem('carrito')) || []
+    }
+
+    function agregarAlCarrito(id) {
+      const todosLosProductos = [...productos.juegos, ...productos.accesorios]
+      const producto = todosLosProductos.find(p => p.id === id)
+      const carrito = obtenerCarrito()
+      const existente = carrito.find(c => c.id === id)
+
+      if (existente) {
+        existente.cantidad++
+      } else {
+        carrito.push({ ...producto, cantidad: 1 })
+      }
+
+      localStorage.setItem('carrito', JSON.stringify(carrito))
+      actualizarBadge()
+      renderProductos()
+    }
+
+    function actualizarBadge() {
+      const carrito = obtenerCarrito()
+      const total = carrito.reduce((acc, p) => acc + p.cantidad, 0)
+      document.getElementById('badge-carrito').textContent = total
+    }
+
+    document.getElementById('btn-tema').addEventListener('click', () => {
+      document.body.classList.toggle('dark')
+      const esDark = document.body.classList.contains('dark')
+      localStorage.setItem('tema', esDark ? 'dark' : 'light')
+      document.getElementById('btn-tema').textContent = esDark ? '☀️ Claro' : '🌙 Oscuro'
+    })
+
+    init()
+  </script>
+</body>
+</html>
